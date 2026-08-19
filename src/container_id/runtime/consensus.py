@@ -2,7 +2,7 @@ import uuid
 from collections import defaultdict
 from datetime import datetime
 
-from container_id.runtime.interfaces import ContainerEvent
+from container_id.runtime.interfaces import ContainerEvent, OCRCandidate
 from container_id.runtime.tracking import Track
 
 
@@ -111,10 +111,10 @@ class ConsensusEngine:
             return None
 
         # Group by normalized text
-        scores_by_text = defaultdict(float)
-        frames_by_text = defaultdict(int)
-        best_candidate_obj_by_text = {}
-        max_ocr_conf_by_text = defaultdict(float)
+        scores_by_text: defaultdict[str, float] = defaultdict(float)
+        frames_by_text: defaultdict[str, int] = defaultdict(int)
+        best_candidate_obj_by_text: dict[str, OCRCandidate] = {}
+        max_ocr_conf_by_text: defaultdict[str, float] = defaultdict(float)
 
         for c_dict in recent_candidates:
             c = c_dict["candidate"]
@@ -149,7 +149,7 @@ class ConsensusEngine:
             return None
 
         # Find the best candidate
-        best_text = max(scores_by_text, key=scores_by_text.get)
+        best_text = max(scores_by_text.keys(), key=lambda k: scores_by_text[k])
         best_score = scores_by_text[best_text]
         support_frames = frames_by_text[best_text]
 
@@ -172,12 +172,18 @@ class ConsensusEngine:
         self.suppressor.record_emission(self.camera_id, best_text, current_timestamp)
 
         # Build event
-        best_c_dict = best_candidate_obj_by_text[best_text]
-        best_c = best_c_dict["candidate"]
+        best_c = best_candidate_obj_by_text[best_text]
+        if isinstance(best_c, dict):
+            best_c = best_c["candidate"]
         is_dict = isinstance(best_c, dict)
 
         # Calculate aggregates
         avg_det_conf = sum(track.detector_confidences) / len(track.detector_confidences)
+
+        if is_dict:
+            check_digit_valid = best_c.get("check_digit_valid", False) # type: ignore
+        else:
+            check_digit_valid = best_c.check_digit_valid # type: ignore
 
         event = ContainerEvent(
             event_id=str(uuid.uuid4()),
@@ -185,9 +191,7 @@ class ConsensusEngine:
             camera_id=self.camera_id,
             track_id=track.track_id,
             container_number=best_text,
-            check_digit_valid=best_c.get("check_digit_valid", False)
-            if is_dict
-            else best_c.check_digit_valid,
+            check_digit_valid=check_digit_valid,
             confidence=float(
                 min(1.0, best_score / (self.window_frames * 1.0))
             ),  # rough normalization

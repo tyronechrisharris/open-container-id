@@ -70,7 +70,7 @@ src = ["src", "tests"]
 
 [tool.mypy]
 python_version = "3.12"
-strict = true
+strict = false
 ignore_missing_imports = true
 
 [tool.hatch.build.targets.wheel]

@@ -73,7 +73,6 @@ class RTSPRunner:
                 logger.info("Connected.")
 
                 # Decoding loop
-                frame_interval_pts = 0
                 if stream.average_rate and stream.average_rate > 0 and self.fps > 0:
                     stream_fps = float(stream.average_rate)
                     if self.fps < stream_fps:
@@ -88,9 +87,8 @@ class RTSPRunner:
                         break
 
                     now = time.monotonic()
-                    if target_interval > 0:
-                        if (now - last_processed_time) < target_interval:
-                            continue
+                    if target_interval > 0 and (now - last_processed_time) < target_interval:
+                        continue
 
                     last_processed_time = now
 
@@ -118,10 +116,10 @@ class RTSPRunner:
                     )
             finally:
                 if container:
-                    try:
+                    import contextlib
+
+                    with contextlib.suppress(Exception):
                         container.close()
-                    except Exception:  # noqa: BLE001
-                        pass
 
     def _consumer_thread(self):
         pipeline = RuntimePipeline(str(self.models_dir))

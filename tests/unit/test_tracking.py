@@ -45,7 +45,7 @@ def test_iou_tracker_match_and_age():
     assert len(tracks3) == 2
 
     # Find original track
-    orig = [t for t in tracks3 if t.track_id == track_id][0]
+    orig = next(t for t in tracks3 if t.track_id == track_id)
     assert orig.missed_frames == 1
 
     # Frame 4: Empty detection (ages both, keeps them alive because max_missed_frames=2)

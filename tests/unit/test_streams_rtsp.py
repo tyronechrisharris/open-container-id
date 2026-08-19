@@ -15,6 +15,6 @@ camera:
 """)
     models_dir = tmp_path / "models"
 
-    with patch("container_id.streams.rtsp.RuntimePipeline") as mock_pipeline:
+    with patch("container_id.streams.rtsp.RuntimePipeline"):
         runner = RTSPRunner(str(config_file), str(models_dir))
         assert runner.fps == 15

@@ -114,6 +114,7 @@ def get_rfdetr_model(variant: str, num_classes: int, pretrained: bool):
     from rfdetr import RFDETRLarge, RFDETRMedium, RFDETRNano, RFDETRSmall
 
     variant = variant.lower()
+    model: Any
     if variant == "nano":
         model = RFDETRNano(num_classes=num_classes)
     elif variant == "small":

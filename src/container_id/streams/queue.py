@@ -11,7 +11,7 @@ class LatestFrameQueue:
 
     def __init__(self, maxsize: int = 3):
         self.maxsize = maxsize
-        self._queue = deque(maxlen=maxsize)
+        self._queue: deque[Any] = deque(maxlen=maxsize)
         self._condition = threading.Condition()
 
     def put(self, item: Any) -> None:
@@ -27,9 +27,8 @@ class LatestFrameQueue:
     def get(self, timeout: float | None = None) -> Any | None:
         """Remove and return an item from the queue."""
         with self._condition:
-            if not self._queue:
-                if not self._condition.wait(timeout=timeout):
-                    return None
+            if not self._queue and not self._condition.wait(timeout=timeout):
+                return None
             return self._queue.popleft()
 
     def qsize(self) -> int:

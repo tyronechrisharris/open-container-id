@@ -30,7 +30,7 @@ def generate_transform_candidates(
     Generates transform candidates based on the layout orientation.
     Returns a dict mapping transform name to the transformed numpy array.
     """
-    candidates = {}
+    candidates: dict[str, np.ndarray] = {}
 
     if crop is None or crop.size == 0:
         return candidates
