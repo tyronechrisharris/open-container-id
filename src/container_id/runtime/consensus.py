@@ -1,9 +1,8 @@
-from container_id.runtime.interfaces import OCRCandidate
 import uuid
 from collections import defaultdict
 from datetime import datetime
 
-from container_id.runtime.interfaces import ContainerEvent
+from container_id.runtime.interfaces import ContainerEvent, OCRCandidate
 from container_id.runtime.tracking import Track
 
 
