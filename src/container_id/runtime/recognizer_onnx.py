@@ -2,10 +2,11 @@ import json
 import logging
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
-from container_id.iso6346.candidates import score_candidate
+from container_id.iso6346.candidates import parse_candidate, score_candidate
 from container_id.iso6346.check_digit import validate_check_digit
 from container_id.iso6346.normalize import normalize_container_number
 from container_id.runtime.interfaces import OCRCandidate
@@ -111,7 +112,7 @@ class ONNXRecognizer:
         conf = float(conf_sum / max(count, 1))
         return text, conf
 
-    def _postprocess(self, outputs) -> list[OCRCandidate]:
+    def _postprocess(self, outputs: Any) -> list[OCRCandidate]:
         if self._is_mock:
             # Generate a mock successful candidate
             raw = "BMOU4445146"
@@ -137,7 +138,9 @@ class ONNXRecognizer:
 
             # Simple ISO evaluation based on parsed logic
             # Score candidate returns status, but we can do a quick check here.
-            _score = score_candidate(norm_text)
+            parsed_id = parse_candidate(norm_text)
+            if parsed_id:
+                _score = score_candidate(parsed_id)
 
             check_digit_valid = False
             structure_valid = False
@@ -164,7 +167,7 @@ class ONNXRecognizer:
         return candidates
 
     def recognize(self, crops: Sequence[np.ndarray]) -> list[list[OCRCandidate]]:
-        results = []
+        results: list[list[OCRCandidate]] = []
 
         if not crops:
             return results

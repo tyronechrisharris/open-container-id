@@ -1,3 +1,4 @@
+from typing import Any
 import json
 import logging
 from collections.abc import Sequence
@@ -92,11 +93,11 @@ class ONNXDetector:
             "orig_w": w,
         }
 
-    def _postprocess(self, outputs, meta: dict) -> list[Detection]:
+    def _postprocess(self, outputs: Any, meta: dict[str, Any]) -> list[Detection]:
         # Simple mock output decoding for RFDETR standard format [batch, num_queries, 6 (x,y,w,h,conf,class)]
         # or [batch, num_queries, 4 (bbox) + num_classes (logits)]
 
-        detections = []
+        detections: list[Detection] = []
         if self._is_mock:
             # Return a fake detection for testing
             return [

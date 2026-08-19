@@ -11,7 +11,7 @@ class LatestFrameQueue:
 
     def __init__(self, maxsize: int = 3):
         self.maxsize = maxsize
-        self._queue = deque(maxlen=maxsize)
+        self._queue: deque[Any] = deque(maxlen=maxsize)
         self._condition = threading.Condition()
 
     def put(self, item: Any) -> None:
