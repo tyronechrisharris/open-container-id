@@ -1,0 +1,7 @@
+version: '3'
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    network_mode: host
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml
