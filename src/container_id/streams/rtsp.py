@@ -40,9 +40,12 @@ class RTSPRunner:
         self.fps = self.config.camera.selected_frame_rate
 
         uri_env_var = self.config.camera.url_env
-        self.uri = os.environ.get(uri_env_var)
-        if not self.uri:
+        self.original_uri = os.environ.get(uri_env_var)
+        if not self.original_uri:
             raise ValueError(f"Environment variable {uri_env_var} not set or empty.")
+
+        # Point to the local proxy via mediamtx
+        self.uri = f"rtsp://localhost:8554/{self.camera_id}"
 
     def _producer_thread(self):
         try:
@@ -152,7 +155,45 @@ class RTSPRunner:
                     logger.error(f"Consumer inference error: {e}")
 
     def run(self):
+        import subprocess
+        import yaml
+
         logger.info(f"Starting RTSP Runner for camera {self.camera_id}")
+
+        # Dynamically write mediamtx.yml safely merging with existing config
+        config_file = "mediamtx.yml"
+        mediamtx_config = {"paths": {}}
+        if os.path.exists(config_file):
+            try:
+                with open(config_file, "r") as f:
+                    loaded = yaml.safe_load(f)
+                    if loaded and isinstance(loaded, dict):
+                        mediamtx_config = loaded
+            except Exception as e:
+                logger.warning(f"Could not load existing mediamtx.yml: {e}")
+
+        if "paths" not in mediamtx_config or not isinstance(mediamtx_config["paths"], dict):
+            mediamtx_config["paths"] = {}
+
+        mediamtx_config["paths"][self.camera_id] = {
+            "runOnInit": f"ffmpeg -i {self.original_uri} -c copy -f rtsp rtsp://localhost:$RTSP_PORT/$MTX_PATH",
+            "runOnInitRestart": "yes"
+        }
+
+        with open(config_file, "w") as f:
+            yaml.dump(mediamtx_config, f, default_flow_style=False)
+
+        # Start mediamtx service and restart it to reload config
+        try:
+            subprocess.run(["docker", "compose", "up", "-d", "mediamtx"], check=True)
+            subprocess.run(["docker", "compose", "restart", "mediamtx"], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to start or restart mediamtx container: {e}")
+            raise
+
+        # Give mediamtx a moment to start
+        time.sleep(2)
+
         self.running = True
 
         prod = threading.Thread(target=self._producer_thread, daemon=True)
@@ -167,6 +208,21 @@ class RTSPRunner:
                 time.sleep(1)
         except KeyboardInterrupt:
             logger.info("Stopping RTSP Runner...")
+        finally:
             self.running = False
             prod.join(timeout=2.0)
             cons.join(timeout=2.0)
+
+            # Remove camera from mediamtx config and reload
+            try:
+                if os.path.exists(config_file):
+                    with open(config_file, "r") as f:
+                        mediamtx_config = yaml.safe_load(f)
+
+                    if mediamtx_config and "paths" in mediamtx_config and self.camera_id in mediamtx_config["paths"]:
+                        del mediamtx_config["paths"][self.camera_id]
+                        with open(config_file, "w") as f:
+                            yaml.dump(mediamtx_config, f, default_flow_style=False)
+                        subprocess.run(["docker", "compose", "restart", "mediamtx"], check=True)
+            except Exception as e:
+                logger.error(f"Failed to remove camera from mediamtx config: {e}")
